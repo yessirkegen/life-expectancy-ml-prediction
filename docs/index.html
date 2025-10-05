@@ -198,20 +198,6 @@
   </footer>
 
   <script>
-    // ---------- Theme ----------
-    const THEME_KEY = 'le_theme';
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const saved = localStorage.getItem(THEME_KEY);
-    if ((saved === 'dark') || (!saved && prefersDark)) document.documentElement.classList.add('dark');
-    const themeToggle = document.getElementById('themeToggle');
-    themeToggle.dataset.on = document.documentElement.classList.contains('dark');
-    themeToggle.addEventListener('click', () => {
-      document.documentElement.classList.toggle('dark');
-      const on = document.documentElement.classList.contains('dark');
-      themeToggle.dataset.on = on;
-      localStorage.setItem(THEME_KEY, on ? 'dark' : 'light');
-    });
-
     // ---------- Overlay penalty (years/step) ----------
     const WEIGHTS = {
       smoke: { none:0, light:1, moderate:2, heavy:3, step:1.0 },
