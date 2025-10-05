@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Life Expectancy – Interactive Demo</title>
+
+  <!-- Tailwind via CDN -->
+  <script>
+    tailwind = { config:{ darkMode:'class' } };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --accent: 59 130 246; } /* blue-500 */
+    html, body { height:100%; }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .bg-grad { background: radial-gradient(1200px 600px at 20% -20%, #f1f5f9, #ecf0f6 40%, #e9eef6 100%); }
+    .dark .bg-grad { background: radial-gradient(1200px 600px at 20% -20%, #0b1220, #0b1020 40%, #0b0f1c 100%); }
+    .card { background: rgba(255,255,255,.86); backdrop-filter: blur(10px); border: 1px solid rgba(148,163,184,.25); border-radius: 18px; box-shadow: 0 20px 50px rgba(2,6,23,.08); }
+    .dark .card { background: rgba(13,23,42,.7); border-color: rgba(148,163,184,.2); }
+    .btn-primary { background: rgb(var(--accent)); color: #fff; font-weight: 700; border-radius: 12px; padding: .7rem 1.1rem; box-shadow: 0 10px 20px rgba(59,130,246,.25); transition: transform .06s ease, box-shadow .2s ease; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(59,130,246,.30); }
+    .btn-ghost { @apply rounded-lg border px-3 py-2 text-sm font-semibold; border-color: rgba(148,163,184,.4); color:#334155; background: rgba(255,255,255,.75); }
+    .dark .btn-ghost { background: rgba(2,6,23,.35); color:#e2e8f0; border-color: rgba(148,163,184,.35); }
+    .switch { position: relative; width: 46px; height: 28px; background:#cbd5e1; border-radius:9999px; cursor:pointer; transition:.2s; }
+    .dark .switch { background:#334155; }
+    .switch[data-on="true"] { background: rgb(var(--accent)); }
+    .knob { position:absolute; top:4px; left:4px; width:20px; height:20px; background:#fff; border-radius:9999px; transition:.2s; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+    .switch[data-on="true"] .knob { left:22px; }
+    .badge { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold; }
+    /* Gauge */
+    .gauge { position: relative; height: 12px; border-radius: 9999px; background: linear-gradient(90deg, #e2e8f0, #e5e7eb); overflow: hidden; }
+    .dark .gauge { background: linear-gradient(90deg, #1f2937, #111827); }
+    .gauge > div { height: 100%; border-radius: inherit; background: linear-gradient(90deg, rgba(59,130,246,1), rgba(37,99,235,1), rgba(99,102,241,1)); transition: width .35s ease; }
+    /* Ornaments */
+    .blob { position: absolute; filter: blur(60px); opacity: .35; z-index: 0; pointer-events: none; }
+    .blob-1 { width: 520px; height: 520px; background: radial-gradient(50% 50% at 50% 50%, rgba(59,130,246,.6), rgba(59,130,246,0)); top:-120px; right:-140px; }
+    .blob-2 { width: 440px; height: 440px; background: radial-gradient(50% 50% at 50% 50%, rgba(99,102,241,.55), rgba(99,102,241,0)); bottom:-120px; left:-100px; }
+    .dark .blob { opacity:.25; }
+  </style>
+</head>
+
+<body class="bg-grad text-slate-800 dark:text-slate-100">
+  <!-- decor -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <!-- Header -->
+  <header class="relative z-10 max-w-6xl mx-auto pt-8 pb-4 px-4 flex items-start justify-between">
+    <div>
+      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Life Expectancy Predictor</h1>
+      <p class="text-slate-600 dark:text-slate-400 mt-2 max-w-3xl">
+        Country-level model (WHO & World Bank). Optional
+        <b>Monotonic overlay</b> subtracts a transparent lifestyle penalty from the model’s prediction.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="switch" id="themeToggle" data-on="false" title="Toggle dark mode"><div class="knob"></div></div>
+    </div>
+  </header>
+
+  <main class="relative z-10 max-w-6xl mx-auto px-4 grid lg:grid-cols-2 gap-6 items-start pb-16">
+    <!-- Controls -->
+    <section class="card p-6 md:p-7">
+      <h2 class="font-semibold text-lg mb-4">Your scenario</h2>
+
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium mb-1">Country</label>
+          <select id="country" class="w-full rounded-xl border-slate-300/70 bg-white/80 dark:bg-slate-900/40 focus:ring-2 focus:ring-blue-500"></select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Year</label>
+          <select id="year" class="w-full rounded-xl border-slate-300/70 bg-white/80 dark:bg-slate-900/40 focus:ring-2 focus:ring-blue-500">
+            <option value="2019" selected>2019</option>
+          </select>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Demo ships predictions for 2019.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Smoking</label>
+            <select id="smoke" class="w-full rounded-xl border-slate-300/70 bg-white/80 dark:bg-slate-900/40 focus:ring-2 focus:ring-blue-500">
+              <option>none</option><option>light</option><option selected>moderate</option><option>heavy</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Alcohol</label>
+            <select id="drink" class="w-full rounded-xl border-slate-300/70 bg-white/80 dark:bg-slate-900/40 focus:ring-2 focus:ring-blue-500">
+              <option>none</option><option selected>rare</option><option>moderate</option><option>heavy</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Physical activity</label>
+            <select id="activity" class="w-full rounded-xl border-slate-300/70 bg-white/80 dark:bg-slate-900/40 focus:ring-2 focus:ring-blue-500">
+              <option>low</option><option>mid</option><option selected>high</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Polluted city</label>
+            <select id="polluted" class="w-full rounded-xl border-slate-300/70 bg-white/80 dark:bg-slate-900/40 focus:ring-2 focus:ring-blue-500">
+              <option>no</option><option>yes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-1">
+          <div class="flex items-center gap-3">
+            <div id="toggleOverlay" class="switch" data-on="true"><div class="knob"></div></div>
+            <div>
+              <div class="font-semibold">Monotonic overlay</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">Enforce “worse lifestyle ⇒ lower estimate”.</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button id="resetBtn" class="btn-ghost">Reset</button>
+            <button id="predictBtn" class="btn-primary">Predict</button>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          This is a country-level model; results reflect correlations, not individual causal effects.
+        </p>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section class="card p-6 md:p-7">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-lg">Prediction</h2>
+        <span id="pillYear" class="badge bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-400/20">Year 2019</span>
+      </div>
+
+      <div class="mt-6 grid gap-6">
+        <!-- Model-only -->
+        <div>
+          <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Model-only</div>
+          <div class="mt-1 flex items-end gap-3">
+            <div class="text-5xl font-extrabold tabular-nums"><span id="predModel">—</span><span class="text-xl text-slate-500 dark:text-slate-400"> yrs</span></div>
+            <div id="baseBox" class="text-sm text-slate-600 dark:text-slate-300">Baseline (none/none/mid/no): <b><span id="baseValue">—</span></b> yrs</div>
+          </div>
+        </div>
+
+        <!-- Overlay -->
+        <div>
+          <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            Overlay (monotonic)
+            <span class="badge bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-600/40" id="overlayOnBadge">ON</span>
+          </div>
+          <div class="mt-1 flex items-end gap-3">
+            <div class="text-5xl font-extrabold tabular-nums"><span id="predOverlay">—</span><span class="text-xl text-slate-500 dark:text-slate-400"> yrs</span></div>
+            <div class="text-sm text-slate-600 dark:text-slate-300">
+              Penalty: −<b><span id="overlayPenalty">—</span></b> yrs · Δ vs baseline: <span id="deltaBase">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gauge -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <div class="text-sm font-medium">Relative position among countries</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400" id="gaugeLabel">—</div>
+          </div>
+          <div class="gauge"><div id="gaugeFill" style="width:0%"></div></div>
+          <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <span id="gaugeMin">min</span><span id="gaugeMax">max</span>
+          </div>
+        </div>
+
+        <!-- Meta -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-xl bg-white/70 dark:bg-slate-900/40 border border-slate-200/70 dark:border-slate-600/40 p-4">
+            <div class="text-xs uppercase text-slate-500 dark:text-slate-400">Selected country</div>
+            <div class="text-lg font-semibold"><span id="countryName">—</span> (<span id="countryIso">—</span>)</div>
+          </div>
+          <div class="rounded-xl bg-white/70 dark:bg-slate-900/40 border border-slate-200/70 dark:border-slate-600/40 p-4">
+            <div class="text-xs uppercase text-slate-500 dark:text-slate-400">Your picks</div>
+            <div id="chips" class="flex flex-wrap gap-2 text-sm mt-1"></div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <button id="shareBtn" class="btn-ghost">Share scenario</button>
+          <a id="ghLink" class="btn-ghost" href="https://github.com/" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 pb-8 text-xs text-slate-500 dark:text-slate-400">
+    Data: WHO (NCD_PAA, tobacco prevalence) & World Bank (PM2.5, GDP, alcohol, life expectancy). Baseline = none/none/mid/no.
+  </footer>
+
+  <script>
+    // ---------- Theme ----------
+    const THEME_KEY = 'le_theme';
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const saved = localStorage.getItem(THEME_KEY);
+    if ((saved === 'dark') || (!saved && prefersDark)) document.documentElement.classList.add('dark');
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.dataset.on = document.documentElement.classList.contains('dark');
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      const on = document.documentElement.classList.contains('dark');
+      themeToggle.dataset.on = on;
+      localStorage.setItem(THEME_KEY, on ? 'dark' : 'light');
+    });
+
+    // ---------- Overlay penalty (years/step) ----------
+    const WEIGHTS = {
+      smoke: { none:0, light:1, moderate:2, heavy:3, step:1.0 },
+      drink: { none:0, rare:1, moderate:2, heavy:3, step:0.5 },
+      activity: { high:0, mid:1, low:2, step:0.7 },
+      polluted: { no:0, yes:1, step:0.6 }
+    };
+    function overlayPenalty(s,d,a,p){
+      return WEIGHTS.smoke.step    * WEIGHTS.smoke[s]
+           + WEIGHTS.drink.step    * WEIGHTS.drink[d]
+           + WEIGHTS.activity.step * WEIGHTS.activity[a]
+           + WEIGHTS.polluted.step * WEIGHTS.polluted[p];
+    }
+    function scenarioKey(s,d,a,p){ return `${s}|${d}|${a}|${p}`; }
+    function chip(text,color="bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-600/40"){
+      return `<span class="badge ${color}">${text}</span>`;
+    }
+
+    const state = {
+      preds:null, countries:[],
+      overlayOn:true, baseMin:null, baseMax:null,
+      selected: { iso3:null, year:2019, smoke:'moderate', drink:'rare', activity:'high', polluted:'no' }
+    };
+
+    const els = {
+      country:  document.getElementById('country'),
+      year:     document.getElementById('year'),
+      smoke:    document.getElementById('smoke'),
+      drink:    document.getElementById('drink'),
+      activity: document.getElementById('activity'),
+      polluted: document.getElementById('polluted'),
+      btn:      document.getElementById('predictBtn'),
+      reset:    document.getElementById('resetBtn'),
+
+      predModel:   document.getElementById('predModel'),
+      predOverlay: document.getElementById('predOverlay'),
+      base:        document.getElementById('baseValue'),
+      delta:       document.getElementById('deltaBase'),
+      penalty:     document.getElementById('overlayPenalty'),
+      badge:       document.getElementById('overlayOnBadge'),
+      toggle:      document.getElementById('toggleOverlay'),
+
+      pillYear: document.getElementById('pillYear'),
+      cname:    document.getElementById('countryName'),
+      ciso:     document.getElementById('countryIso'),
+      chips:    document.getElementById('chips'),
+      gaugeFill:  document.getElementById('gaugeFill'),
+      gaugeLabel: document.getElementById('gaugeLabel'),
+      gaugeMin:   document.getElementById('gaugeMin'),
+      gaugeMax:   document.getElementById('gaugeMax'),
+      share:      document.getElementById('shareBtn')
+    };
+
+    function updateChips(){
+      const s = state.selected;
+      els.chips.innerHTML = [
+        chip(`smoke: ${s.smoke}`, "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:border-rose-400/20"),
+        chip(`drink: ${s.drink}`, "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-400/20"),
+        chip(`activity: ${s.activity}`, "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-400/20"),
+        chip(`polluted: ${s.polluted}`, "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-200 dark:border-indigo-400/20")
+      ].join('');
+      els.pillYear.textContent = `Year ${s.year}`;
+    }
+
+    function predict(){
+      const { iso3, smoke, drink, activity, polluted } = state.selected;
+      if (!iso3 || !state.preds) return;
+
+      const country = state.preds.predictions[iso3];
+      const base = country?.base;
+      const key = `${smoke}|${drink}|${activity}|${polluted}`;
+      const predModel = country?.scenarios?.[key];
+
+      els.predModel.textContent = (predModel ?? NaN).toFixed ? predModel.toFixed(2) : '—';
+      els.base.textContent = base?.toFixed ? base.toFixed(2) : '—';
+
+      const pen = overlayPenalty(smoke, drink, activity, polluted);
+      els.penalty.textContent = pen.toFixed(2);
+
+      const predOverlay = (predModel ?? NaN) - pen;
+      els.predOverlay.textContent = isFinite(predOverlay) ? predOverlay.toFixed(2) : '—';
+
+      const chosen = state.overlayOn ? predOverlay : predModel;
+      const d = (chosen - base);
+      els.delta.textContent = isFinite(d) ? `${d>=0?'+':''}${d.toFixed(2)} yrs` : '—';
+
+      // gauge
+      const t = (chosen - state.baseMin) / (state.baseMax - state.baseMin);
+      const pct = Math.max(0, Math.min(1, t)) * 100;
+      els.gaugeFill.style.width = pct.toFixed(1) + "%";
+      els.gaugeLabel.textContent = `${pct.toFixed(0)} percentile range`;
+
+      // meta
+      const meta = state.countries.find(c=>c.iso3===iso3);
+      els.cname.textContent = meta?.name || '—';
+      els.ciso.textContent  = iso3 || '—';
+
+      // overlay UI state
+      els.badge.textContent = state.overlayOn ? 'ON' : 'OFF';
+      document.getElementById('predOverlay').parentElement.parentElement.style.opacity = state.overlayOn ? 1 : .55;
+    }
+
+    function shareScenario(){
+      const s = state.selected;
+      const url = new URL(location.href);
+      url.search = new URLSearchParams({ iso3:s.iso3, smoke:s.smoke, drink:s.drink, activity:s.activity, polluted:s.polluted }).toString();
+      navigator.clipboard?.writeText(url.toString());
+      els.share.textContent = "Copied!";
+      setTimeout(()=> els.share.textContent = "Share scenario", 1500);
+    }
+
+    // ---------- Boot ----------
+    async function boot(){
+      const [preds, countries] = await Promise.all([
+        fetch('data/preds_2019.json').then(r=>r.json()),
+        fetch('data/countries.json').then(r=>r.json())
+      ]);
+      state.preds = preds; state.countries = countries;
+
+      // populate select
+      els.country.innerHTML = countries.map(c => `<option value="${c.iso3}">${c.name} (${c.iso3})</option>`).join('');
+      const qs = new URLSearchParams(location.search);
+      state.selected.iso3 = qs.get('iso3') || countries[0]?.iso3 || null;
+      els.country.value = state.selected.iso3;
+
+      // bounds for gauge
+      const bases = Object.values(preds.predictions).map(x => x.base).filter(Number.isFinite);
+      state.baseMin = Math.min(...bases);
+      state.baseMax = Math.max(...bases);
+      els.gaugeMin.textContent = `${state.baseMin.toFixed(0)} yrs`;
+      els.gaugeMax.textContent = `${state.baseMax.toFixed(0)} yrs`;
+
+      // query params for scenario (optional)
+      state.selected.smoke = qs.get('smoke') || state.selected.smoke;
+      state.selected.drink = qs.get('drink') || state.selected.drink;
+      state.selected.activity = qs.get('activity') || state.selected.activity;
+      state.selected.polluted = qs.get('polluted') || state.selected.polluted;
+      els.smoke.value = state.selected.smoke;
+      els.drink.value = state.selected.drink;
+      els.activity.value = state.selected.activity;
+      els.polluted.value = state.selected.polluted;
+
+      updateChips();
+      predict();
+    }
+
+    // events
+    els.country.addEventListener('change', e => { state.selected.iso3 = e.target.value; predict(); });
+    els.year.addEventListener('change', e => { state.selected.year = +e.target.value; updateChips(); predict(); });
+    els.smoke.addEventListener('change', e => { state.selected.smoke = e.target.value; updateChips(); predict(); });
+    els.drink.addEventListener('change', e => { state.selected.drink = e.target.value; updateChips(); predict(); });
+    els.activity.addEventListener('change', e => { state.selected.activity = e.target.value; updateChips(); predict(); });
+    els.polluted.addEventListener('change', e => { state.selected.polluted = e.target.value; updateChips(); predict(); });
+    els.btn.addEventListener('click', predict);
+    els.reset.addEventListener('click', () => {
+      els.smoke.value="none"; els.drink.value="none"; els.activity.value="mid"; els.polluted.value="no";
+      state.selected.smoke="none"; state.selected.drink="none"; state.selected.activity="mid"; state.selected.polluted="no";
+      updateChips(); predict();
+    });
+    els.share.addEventListener('click', shareScenario);
+    els.toggle.addEventListener('click', ()=>{ state.overlayOn = !state.overlayOn; els.toggle.dataset.on = String(state.overlayOn); predict(); });
+
+    boot();
+  </script>
+</body>
+</html>
