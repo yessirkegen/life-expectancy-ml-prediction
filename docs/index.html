@@ -259,13 +259,23 @@
       els.dirty.classList.toggle('hidden', !dirty);
     }
 
+    // Colored chips
+    function chip(label, value, colorClass){
+      return `<span class="badge ${colorClass}">${label}: <b class="ml-1">${value}</b></span>`;
+    }
+    const CHIP_COLORS = {
+      smoke:   "bg-rose-500/15 text-rose-300 border border-rose-400/20",
+      drink:   "bg-amber-500/15 text-amber-300 border border-amber-400/20",
+      activity:"bg-emerald-500/15 text-emerald-300 border border-emerald-400/20",
+      polluted:"bg-indigo-500/15 text-indigo-300 border border-indigo-400/20",
+    };
+
     function updateChips(s = state.selected){
-      const pill = (t,c) => `<span class="badge" style="background:#0b1220;border:1px solid rgba(148,163,184,.35);">${t}: <b class="ml-1">${c}</b></span>`;
       els.chips.innerHTML = [
-        pill('smoke', s.smoke),
-        pill('drink', s.drink),
-        pill('activity', s.activity),
-        pill('polluted', s.polluted),
+        chip('smoke', s.smoke, CHIP_COLORS.smoke),
+        chip('drink', s.drink, CHIP_COLORS.drink),
+        chip('activity', s.activity, CHIP_COLORS.activity),
+        chip('polluted', s.polluted, CHIP_COLORS.polluted),
       ].join(' ');
       els.pillYear.textContent = `Year ${s.year}`;
     }
@@ -360,7 +370,7 @@
       predict();
     }
 
-    // events (теперь считаем только по кнопке)
+    // events (считаем только по кнопке)
     els.country.addEventListener('change', readFormToDraft);
     els.year.addEventListener('change', readFormToDraft);
     els.smoke.addEventListener('change', readFormToDraft);
@@ -382,7 +392,7 @@
 
     els.share.addEventListener('click', shareScenario);
 
-    // overlay toggle влияет сразу (это отображение, не вход модели)
+    // overlay toggle влияет сразу
     els.toggle.addEventListener('click', () => {
       state.overlayOn = !state.overlayOn; els.toggle.dataset.on = String(state.overlayOn);
       predict();
