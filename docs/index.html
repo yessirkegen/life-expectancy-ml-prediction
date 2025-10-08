@@ -5,14 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="dark">
   <title>Life Expectancy – Demo</title>
-  <!-- фиксируем базовый путь для Pages -->
-  <base href="/life-expectancy-ml/">
-
   <!-- Tailwind (CDN) -->
   <script>tailwind = { config:{ darkMode:'class' } };</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-
   <style>
     :root { --accent: 59 130 246; }
     body{ font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -180,10 +176,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite">Done</div>
 
-  <!-- (опционально) подключай эти 2 файла, если захочешь фоллбэк без fetch:
-       <script defer src="data/countries.js"></script>
-       <script defer src="data/preds_2019.js"></script>
-  -->
+  <!-- ДАННЫЕ КАК JS (никаких fetch): -->
+  <script defer src="data/countries.js"></script>
+  <script defer src="data/preds_2019.js"></script>
 
   <script>
     // ---------- Overlay penalty ----------
@@ -265,59 +260,6 @@
       updateChips(draft); setDirty(true);
     }
 
-    // ---------- Надёжный загрузчик данных ----------
-    function repoBasePath(){
-      // /life-expectancy-ml/  (для Pages project site)
-      const segs = location.pathname.split('/').filter(Boolean);
-      return segs.length ? `/${segs[0]}/` : '/';
-    }
-    async function fetchJSON(url){
-      const r = await fetch(url, { cache:'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-      const text = await r.text();
-      try { return JSON.parse(text); }
-      catch(e){ throw new Error(`Invalid JSON at ${url}: ${e.message}`); }
-    }
-    async function fetchFirstAvailable(paths){
-      let lastErr;
-      for (const p of paths){
-        try { console.log('[fetch try]', p); return await fetchJSON(p + `?v=${Date.now()}`); }
-        catch(e){ console.warn('[fetch fail]', p, e); lastErr=e; }
-      }
-      throw lastErr || new Error('All paths failed');
-    }
-
-    async function loadData(){
-      const base = repoBasePath(); // напр. /life-expectancy-ml/
-      const predsPaths = [
-        `${base}data/preds_2019.json`,
-        `data/preds_2019.json`,
-        `/life-expectancy-ml/data/preds_2019.json`
-      ];
-      const countryPaths = [
-        `${base}data/countries.json`,
-        `data/countries.json`,
-        `/life-expectancy-ml/data/countries.json`
-      ];
-
-      // 1) пробуем fetch с тройным набором путей
-      try {
-        const [preds, countries] = await Promise.all([
-          fetchFirstAvailable(predsPaths),
-          fetchFirstAvailable(countryPaths)
-        ]);
-        return { preds, countries };
-      } catch (e) {
-        console.warn('[fetch paths failed]', e);
-        // 2) фоллбэк: без fetch — если подключены data/*.js
-        if (window.PREDS && window.COUNTRIES) {
-          return { preds: window.PREDS, countries: window.COUNTRIES };
-        }
-        throw e;
-      }
-    }
-
-    // ---------- Рендер ----------
     function predict(){
       const { iso3, smoke, drink, activity, polluted } = state.selected;
       if(!iso3 || !state.preds) return;
@@ -380,42 +322,49 @@
       });
     }
 
-    async function boot(){
-      try {
-        wireEvents();
-        const { preds, countries } = await loadData();
-        state.preds = preds; state.countries = countries;
-
-        // populate select
-        els.country.innerHTML = countries.map(c => `<option value="${c.iso3}">${c.name} (${c.iso3})</option>`).join('');
-
-        const qs = new URLSearchParams(location.search);
-        state.selected.iso3 = qs.get('iso3') || countries[0]?.iso3 || null;
-
-        const bases = Object.values(preds.predictions).map(x => x.base).filter(Number.isFinite);
-        state.baseMin = Math.min(...bases);
-        state.baseMax = Math.max(...bases);
-        els.gaugeMin.textContent = `${state.baseMin.toFixed(0)} yrs`;
-        els.gaugeMax.textContent = `${state.baseMax.toFixed(0)} yrs`;
-
-        // init form
-        els.country.value = state.selected.iso3;
-        els.year.value = state.selected.year;
-        els.smoke.value = state.selected.smoke;
-        els.drink.value = state.selected.drink;
-        els.activity.value = state.selected.activity;
-        els.polluted.value = state.selected.polluted;
-
-        updateChips(state.selected);
-        setDirty(false);
-        predict();
-      } catch (err){
-        console.error('[BOOT ERROR]', err);
-        showToast(`Load failed: ${err.message}`);
+    function boot(){
+      // читаем данные напрямую из window (их положили data/*.js)
+      if(!window.PREDS || !window.COUNTRIES){
+        console.error('Data JS not loaded.');
+        document.getElementById('toast').textContent = 'Data not loaded (check data/*.js)';
+        document.getElementById('toast').classList.add('show');
+        return;
       }
+      state.preds = window.PREDS;
+      state.countries = window.COUNTRIES;
+
+      // populate select
+      const countries = state.countries;
+      const preds = state.preds;
+      document.getElementById('country').innerHTML =
+        countries.map(c => `<option value="${c.iso3}">${c.name} (${c.iso3})</option>`).join('');
+
+      const qs = new URLSearchParams(location.search);
+      state.selected.iso3 = qs.get('iso3') || countries[0]?.iso3 || null;
+
+      // gauge bounds
+      const bases = Object.values(preds.predictions).map(x => x.base).filter(Number.isFinite);
+      state.baseMin = Math.min(...bases);
+      state.baseMax = Math.max(...bases);
+      els.gaugeMin.textContent = `${state.baseMin.toFixed(0)} yrs`;
+      els.gaugeMax.textContent = `${state.baseMax.toFixed(0)} yrs`;
+
+      // init form
+      els.country.value = state.selected.iso3;
+      els.year.value = state.selected.year;
+      els.smoke.value = state.selected.smoke;
+      els.drink.value = state.selected.drink;
+      els.activity.value = state.selected.activity;
+      els.polluted.value = state.selected.polluted;
+
+      updateChips(state.selected);
+      setDirty(false);
+      predict();
     }
 
-    boot();
+    wireEvents();
+    // стартуем ПОСЛЕ загрузки data/*.js
+    window.addEventListener('load', boot);
   </script>
 </body>
 </html>
