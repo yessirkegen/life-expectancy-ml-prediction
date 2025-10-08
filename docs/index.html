@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="dark">
   <title>Life Expectancy – Demo</title>
+  <!-- фиксируем базовый путь для Pages -->
+  <base href="/life-expectancy-ml/">
 
   <!-- Tailwind (CDN) -->
   <script>tailwind = { config:{ darkMode:'class' } };</script>
@@ -12,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    :root { --accent: 59 130 246; } /* blue-500 */
+    :root { --accent: 59 130 246; }
     body{ font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
     .bg-grad{ background: radial-gradient(1200px 600px at 20% -20%, #0b1220, #0b1020 40%, #0b0f1c 100%); }
     .card{ background: rgba(13,23,42,.7); border:1px solid rgba(148,163,184,.2); border-radius:18px; backdrop-filter: blur(10px); box-shadow:0 20px 50px rgba(2,6,23,.18); }
@@ -29,7 +31,6 @@
     .blob{ position:absolute; filter:blur(60px); opacity:.25; pointer-events:none; }
     .blob-1{ width:520px; height:520px; background: radial-gradient(50% 50% at 50% 50%, rgba(59,130,246,.55), rgba(59,130,246,0)); top:-120px; right:-140px; }
     .blob-2{ width:440px; height:440px; background: radial-gradient(50% 50% at 50% 50%, rgba(99,102,241,.5), rgba(99,102,241,0)); bottom:-120px; left:-100px; }
-    /* Toast */
     .toast{ position:fixed; right:16px; bottom:16px; min-width: 220px; z-index:50;
             background:#0b1220; color:#e2e8f0; border:1px solid rgba(148,163,184,.25);
             border-radius:12px; padding:.75rem .9rem; box-shadow:0 12px 30px rgba(0,0,0,.35);
@@ -49,16 +50,13 @@
   </header>
 
   <main class="relative z-10 max-w-6xl mx-auto px-4 grid lg:grid-cols-2 gap-6 items-start pb-16">
-    <!-- Controls -->
     <section class="card p-6 md:p-7">
       <h2 class="font-semibold text-lg mb-4">Your scenario</h2>
-
       <div class="space-y-5">
         <div>
           <label class="block text-sm font-medium mb-1">Country</label>
           <select id="country" class="w-full rounded-xl bg-slate-900/40 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
         </div>
-
         <div>
           <label class="block text-sm font-medium mb-1">Year</label>
           <select id="year" class="w-full rounded-xl bg-slate-900/40 border border-slate-700 focus:ring-2 focus:ring-blue-500">
@@ -66,7 +64,6 @@
           </select>
           <p class="text-xs text-slate-400 mt-1">Demo ships predictions for 2019.</p>
         </div>
-
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">Smoking</label>
@@ -102,7 +99,6 @@
               <div class="text-xs text-slate-400">Enforce “worse lifestyle ⇒ lower estimate”.</div>
             </div>
           </div>
-
           <div class="flex items-center gap-3">
             <span id="dirtyBadge" class="badge bg-amber-500/15 text-amber-300 border border-amber-400/30 hidden">Unsaved changes</span>
             <button id="resetBtn" class="btn-ghost">Reset</button>
@@ -114,7 +110,6 @@
       </div>
     </section>
 
-    <!-- Result -->
     <section class="card p-6 md:p-7">
       <div class="flex items-center justify-between">
         <h2 class="font-semibold text-lg">Prediction</h2>
@@ -173,7 +168,7 @@
 
         <div class="flex flex-wrap gap-3">
           <button id="shareBtn" class="btn-ghost">Share scenario</button>
-          <a id="ghLink" class="btn-ghost" href="https://github.com/" target="_blank" rel="noreferrer">GitHub</a>
+          <a id="ghLink" class="btn-ghost" href="https://github.com/Yessirkegen/life-expectancy-ml" target="_blank" rel="noreferrer">GitHub</a>
         </div>
       </div>
     </section>
@@ -183,11 +178,15 @@
     Data: WHO (NCD_PAA, tobacco prevalence) & World Bank (PM2.5, GDP, alcohol, life expectancy).
   </footer>
 
-  <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite">Done</div>
 
+  <!-- (опционально) подключай эти 2 файла, если захочешь фоллбэк без fetch:
+       <script defer src="data/countries.js"></script>
+       <script defer src="data/preds_2019.js"></script>
+  -->
+
   <script>
-    // ---------- Overlay penalty (years per step) ----------
+    // ---------- Overlay penalty ----------
     const WEIGHTS = {
       smoke: { none:0, light:1, moderate:2, heavy:3, step:1.0 },
       drink: { none:0, rare:1, moderate:2, heavy:3, step:0.5 },
@@ -195,24 +194,19 @@
       polluted: { no:0, yes:1, step:0.6 }
     };
     const scenarioKey = (s,d,a,p)=>`${s}|${d}|${a}|${p}`;
-    function overlayPenalty(s,d,a,p){
-      return WEIGHTS.smoke.step    * WEIGHTS.smoke[s]
-           + WEIGHTS.drink.step    * WEIGHTS.drink[d]
-           + WEIGHTS.activity.step * WEIGHTS.activity[a]
-           + WEIGHTS.polluted.step * WEIGHTS.polluted[p];
-    }
+    const overlayPenalty = (s,d,a,p)=>
+      WEIGHTS.smoke.step*WEIGHTS.smoke[s] +
+      WEIGHTS.drink.step*WEIGHTS.drink[d] +
+      WEIGHTS.activity.step*WEIGHTS.activity[a] +
+      WEIGHTS.polluted.step*WEIGHTS.polluted[p];
 
-    // ---------- State ----------
     const state = {
       preds:null, countries:[],
       overlayOn:true, baseMin:null, baseMax:null,
       selected:{ iso3:null, year:2019, smoke:'moderate', drink:'rare', activity:'high', polluted:'no' }
     };
-    // draft = то, что в форме (ждёт нажатия Predict)
-    let draft = { ...state.selected };
-    let dirty = false;
+    let draft = { ...state.selected }, dirty=false;
 
-    // ---------- Elements ----------
     const els = {
       country:  document.getElementById('country'),
       year:     document.getElementById('year'),
@@ -223,7 +217,6 @@
       btn:      document.getElementById('predictBtn'),
       reset:    document.getElementById('resetBtn'),
       dirty:    document.getElementById('dirtyBadge'),
-
       predModel:   document.getElementById('predModel'),
       predOverlay: document.getElementById('predOverlay'),
       base:        document.getElementById('baseValue'),
@@ -231,7 +224,6 @@
       penalty:     document.getElementById('overlayPenalty'),
       badge:       document.getElementById('overlayOnBadge'),
       toggle:      document.getElementById('toggleOverlay'),
-
       pillYear: document.getElementById('pillYear'),
       cname:    document.getElementById('countryName'),
       ciso:     document.getElementById('countryIso'),
@@ -244,25 +236,6 @@
       toast:      document.getElementById('toast'),
     };
 
-    // ---------- Helpers ----------
-    function showToast(text){
-      els.toast.textContent = text;
-      els.toast.classList.add('show');
-      clearTimeout(showToast._t);
-      showToast._t = setTimeout(()=> els.toast.classList.remove('show'), 1500);
-    }
-
-    function setDirty(flag){
-      dirty = flag;
-      els.btn.disabled = !dirty;
-      els.btn.classList.toggle('opacity-50', !dirty);
-      els.dirty.classList.toggle('hidden', !dirty);
-    }
-
-    // Colored chips
-    function chip(label, value, colorClass){
-      return `<span class="badge ${colorClass}">${label}: <b class="ml-1">${value}</b></span>`;
-    }
     const CHIP_COLORS = {
       smoke:   "bg-rose-500/15 text-rose-300 border border-rose-400/20",
       drink:   "bg-amber-500/15 text-amber-300 border border-amber-400/20",
@@ -270,7 +243,13 @@
       polluted:"bg-indigo-500/15 text-indigo-300 border border-indigo-400/20",
     };
 
-    function updateChips(s = state.selected){
+    function showToast(text){ els.toast.textContent=text; els.toast.classList.add('show');
+      clearTimeout(showToast._t); showToast._t=setTimeout(()=>els.toast.classList.remove('show'), 2000); }
+    function setDirty(flag){ dirty=flag; els.btn.disabled=!flag;
+      els.btn.classList.toggle('opacity-50',!flag); els.dirty.classList.toggle('hidden',!flag); }
+    function chip(label, value, colorClass){
+      return `<span class="badge ${colorClass}">${label}: <b class="ml-1">${value}</b></span>`; }
+    function updateChips(s=state.selected){
       els.chips.innerHTML = [
         chip('smoke', s.smoke, CHIP_COLORS.smoke),
         chip('drink', s.drink, CHIP_COLORS.drink),
@@ -279,27 +258,72 @@
       ].join(' ');
       els.pillYear.textContent = `Year ${s.year}`;
     }
-
     function readFormToDraft(){
-      draft = {
-        iso3: els.country.value,
-        year: +els.year.value,
-        smoke: els.smoke.value,
-        drink: els.drink.value,
-        activity: els.activity.value,
-        polluted: els.polluted.value
-      };
-      updateChips(draft);
-      setDirty(true);
+      draft = { iso3:els.country.value, year:+els.year.value,
+                smoke:els.smoke.value, drink:els.drink.value,
+                activity:els.activity.value, polluted:els.polluted.value };
+      updateChips(draft); setDirty(true);
     }
 
+    // ---------- Надёжный загрузчик данных ----------
+    function repoBasePath(){
+      // /life-expectancy-ml/  (для Pages project site)
+      const segs = location.pathname.split('/').filter(Boolean);
+      return segs.length ? `/${segs[0]}/` : '/';
+    }
+    async function fetchJSON(url){
+      const r = await fetch(url, { cache:'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+      const text = await r.text();
+      try { return JSON.parse(text); }
+      catch(e){ throw new Error(`Invalid JSON at ${url}: ${e.message}`); }
+    }
+    async function fetchFirstAvailable(paths){
+      let lastErr;
+      for (const p of paths){
+        try { console.log('[fetch try]', p); return await fetchJSON(p + `?v=${Date.now()}`); }
+        catch(e){ console.warn('[fetch fail]', p, e); lastErr=e; }
+      }
+      throw lastErr || new Error('All paths failed');
+    }
+
+    async function loadData(){
+      const base = repoBasePath(); // напр. /life-expectancy-ml/
+      const predsPaths = [
+        `${base}data/preds_2019.json`,
+        `data/preds_2019.json`,
+        `/life-expectancy-ml/data/preds_2019.json`
+      ];
+      const countryPaths = [
+        `${base}data/countries.json`,
+        `data/countries.json`,
+        `/life-expectancy-ml/data/countries.json`
+      ];
+
+      // 1) пробуем fetch с тройным набором путей
+      try {
+        const [preds, countries] = await Promise.all([
+          fetchFirstAvailable(predsPaths),
+          fetchFirstAvailable(countryPaths)
+        ]);
+        return { preds, countries };
+      } catch (e) {
+        console.warn('[fetch paths failed]', e);
+        // 2) фоллбэк: без fetch — если подключены data/*.js
+        if (window.PREDS && window.COUNTRIES) {
+          return { preds: window.PREDS, countries: window.COUNTRIES };
+        }
+        throw e;
+      }
+    }
+
+    // ---------- Рендер ----------
     function predict(){
       const { iso3, smoke, drink, activity, polluted } = state.selected;
       if(!iso3 || !state.preds) return;
-
       const country = state.preds.predictions[iso3];
       const base = country?.base;
-      const key = scenarioKey(smoke, drink, activity, polluted);
+      const key = `${smoke}|${drink}|${activity}|${polluted}`;
       const predModel = country?.scenarios?.[key];
 
       els.predModel.textContent = (predModel ?? NaN).toFixed ? predModel.toFixed(2) : '—';
@@ -328,77 +352,69 @@
       document.getElementById('predOverlay').parentElement.parentElement.style.opacity = state.overlayOn ? 1 : .55;
     }
 
-    function shareScenario(){
-      const s = state.selected;
-      const url = new URL(location.href);
-      url.search = new URLSearchParams({ iso3:s.iso3, smoke:s.smoke, drink:s.drink, activity:s.activity, polluted:s.polluted }).toString();
-      navigator.clipboard?.writeText(url.toString());
-      showToast('Link copied');
+    function wireEvents(){
+      els.country.addEventListener('change', readFormToDraft);
+      els.year.addEventListener('change', readFormToDraft);
+      els.smoke.addEventListener('change', readFormToDraft);
+      els.drink.addEventListener('change', readFormToDraft);
+      els.activity.addEventListener('change', readFormToDraft);
+      els.polluted.addEventListener('change', readFormToDraft);
+
+      els.btn.addEventListener('click', () => {
+        state.selected = { ...draft };
+        predict(); setDirty(false); showToast('Scenario applied');
+      });
+      els.reset.addEventListener('click', () => {
+        els.smoke.value="none"; els.drink.value="none"; els.activity.value="mid"; els.polluted.value="no";
+        readFormToDraft();
+      });
+      els.share.addEventListener('click', () => {
+        const s = state.selected;
+        const url = new URL(location.href);
+        url.search = new URLSearchParams({ iso3:s.iso3, smoke:s.smoke, drink:s.drink, activity:s.activity, polluted:s.polluted }).toString();
+        navigator.clipboard?.writeText(url.toString()).then(()=> showToast('Link copied'));
+      });
+      els.toggle.addEventListener('click', () => {
+        state.overlayOn = !state.overlayOn; els.toggle.dataset.on = String(state.overlayOn);
+        predict();
+      });
     }
 
-    // ---------- Boot ----------
     async function boot(){
-      const [preds, countries] = await Promise.all([
-        fetch('data/preds_2019.json').then(r=>r.json()),
-        fetch('data/countries.json').then(r=>r.json())
-      ]);
-      state.preds = preds; state.countries = countries;
+      try {
+        wireEvents();
+        const { preds, countries } = await loadData();
+        state.preds = preds; state.countries = countries;
 
-      // populate select
-      els.country.innerHTML = countries.map(c => `<option value="${c.iso3}">${c.name} (${c.iso3})</option>`).join('');
+        // populate select
+        els.country.innerHTML = countries.map(c => `<option value="${c.iso3}">${c.name} (${c.iso3})</option>`).join('');
 
-      const qs = new URLSearchParams(location.search);
-      state.selected.iso3 = qs.get('iso3') || countries[0]?.iso3 || null;
+        const qs = new URLSearchParams(location.search);
+        state.selected.iso3 = qs.get('iso3') || countries[0]?.iso3 || null;
 
-      // bounds for gauge
-      const bases = Object.values(preds.predictions).map(x => x.base).filter(Number.isFinite);
-      state.baseMin = Math.min(...bases);
-      state.baseMax = Math.max(...bases);
-      els.gaugeMin.textContent = `${state.baseMin.toFixed(0)} yrs`;
-      els.gaugeMax.textContent = `${state.baseMax.toFixed(0)} yrs`;
+        const bases = Object.values(preds.predictions).map(x => x.base).filter(Number.isFinite);
+        state.baseMin = Math.min(...bases);
+        state.baseMax = Math.max(...bases);
+        els.gaugeMin.textContent = `${state.baseMin.toFixed(0)} yrs`;
+        els.gaugeMax.textContent = `${state.baseMax.toFixed(0)} yrs`;
 
-      // init form from selected
-      els.country.value = state.selected.iso3;
-      els.year.value = state.selected.year;
-      els.smoke.value = state.selected.smoke;
-      els.drink.value = state.selected.drink;
-      els.activity.value = state.selected.activity;
-      els.polluted.value = state.selected.polluted;
+        // init form
+        els.country.value = state.selected.iso3;
+        els.year.value = state.selected.year;
+        els.smoke.value = state.selected.smoke;
+        els.drink.value = state.selected.drink;
+        els.activity.value = state.selected.activity;
+        els.polluted.value = state.selected.polluted;
 
-      updateChips(state.selected);
-      setDirty(false);
-      predict();
+        updateChips(state.selected);
+        setDirty(false);
+        predict();
+      } catch (err){
+        console.error('[BOOT ERROR]', err);
+        showToast(`Load failed: ${err.message}`);
+      }
     }
 
-    // events (считаем только по кнопке)
-    els.country.addEventListener('change', readFormToDraft);
-    els.year.addEventListener('change', readFormToDraft);
-    els.smoke.addEventListener('change', readFormToDraft);
-    els.drink.addEventListener('change', readFormToDraft);
-    els.activity.addEventListener('change', readFormToDraft);
-    els.polluted.addEventListener('change', readFormToDraft);
-
-    els.btn.addEventListener('click', () => {
-      state.selected = { ...draft };
-      predict();
-      setDirty(false);
-      showToast('Scenario applied');
-    });
-
-    els.reset.addEventListener('click', () => {
-      els.smoke.value="none"; els.drink.value="none"; els.activity.value="mid"; els.polluted.value="no";
-      readFormToDraft();
-    });
-
-    els.share.addEventListener('click', shareScenario);
-
-    // overlay toggle влияет сразу
-    els.toggle.addEventListener('click', () => {
-      state.overlayOn = !state.overlayOn; els.toggle.dataset.on = String(state.overlayOn);
-      predict();
-    });
-
-    // start
     boot();
   </script>
 </body>
