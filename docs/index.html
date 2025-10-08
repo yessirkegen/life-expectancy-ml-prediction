@@ -177,6 +177,13 @@
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite">Done</div>
+  <script>
+  // Экстренная очистка SW и кэшей на всём домене
+    if ('serviceWorker' in navigator) {
+      caches?.keys?.().then(keys => keys.forEach(k => caches.delete(k)));
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+    }
+  </script>
 
   <!-- ДАННЫЕ КАК JS (никаких fetch): -->
   <script defer src="data/countries.js?v=20251008"></script>
